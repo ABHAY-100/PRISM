@@ -69,3 +69,19 @@ class LongTermMemory:
                 if verify_item(item, self._agent_public_key):
                     verified.append(item)
         return verified
+
+    def search(self, query: str, n_results: int = 5) -> List[MemoryItem]:
+        logging.debug(f"Searching long-term items with query: {query}")
+        results = self._collection.query(query_texts=[query], n_results=n_results)
+
+        verified = []
+        if results and results.get("ids") and results["ids"][0]:
+            for i, m_id in enumerate(results["ids"][0]):
+                metadata = results["metadatas"][0][i]
+                content = results["documents"][0][i]
+                item = MemoryItem.from_dict(metadata, m_id, content)
+
+                if verify_item(item, self._agent_public_key):
+                    verified.append(item)
+
+        return verified

@@ -76,3 +76,20 @@ class SessionMemory:
                 self._collection.delete(ids=ids_to_delete)
 
         logging.debug("Purged expired session items")
+
+    def search(self, query: str, n_results: int = 5) -> List[MemoryItem]:
+        logging.debug(f"Searching session items with query: {query}")
+        now = datetime.utcnow()
+        results = self._collection.query(query_texts=[query], n_results=n_results)
+
+        active = []
+        if results and results.get("ids") and results["ids"][0]:
+            for i, m_id in enumerate(results["ids"][0]):
+                metadata = results["metadatas"][0][i]
+                content = results["documents"][0][i]
+                item = MemoryItem.from_dict(metadata, m_id, content)
+
+                if item.expires_at > now and verify_session_item(item):
+                    active.append(item)
+
+        return active

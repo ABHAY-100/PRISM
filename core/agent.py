@@ -218,7 +218,6 @@ def execute_tools_node(state: AgentState) -> dict:
 
 def store_to_memory_node(state: AgentState) -> dict:
     """Store tool outputs and conversation to appropriate memory tiers using router."""
-    print(f"DEBUG: Storing memory for user_id: {state.get('user_id')}")  # Debug
     for message in reversed(state["messages"]):
         if isinstance(message, ToolMessage):
             memory_item = MemoryItem.create(
@@ -227,11 +226,9 @@ def store_to_memory_node(state: AgentState) -> dict:
                 trust_score=0.7,  # dummy trust score
                 user_id=state["user_id"],
             )
-            print(f"DEBUG: Created memory item with user_id: {memory_item.user_id}")  # Debug
 
             # dummy router
             classifier(memory_item)
-            print(f"DEBUG: Memory item tier after classification: {memory_item.tier}")  # Debug
 
             if memory_item.tier == "SESSION":
                 from datetime import timedelta
@@ -329,20 +326,29 @@ def get_user_memory_summary(user_id: str) -> str:
     # session memory
     try:
         session_items = session_memory.get_active()
-        print(f"DEBUG: All session items: {len(session_items)}")  # Debug
         user_session = [item for item in session_items if item.user_id == user_id]
-        print(f"DEBUG: User session items: {len(user_session)}")  # Debug
         summary += f"Session items: {len(user_session)}\n"
+        if user_session:
+            summary += "--- SESSION MEMORY CONTENT ---\n"
+            for i, item in enumerate(user_session[:5]):
+                summary += f"{i+1}. {item.content[:100]}{'...' if len(item.content) > 100 else ''}\n"
+            if len(user_session) > 5:
+                summary += f"... and {len(user_session) - 5} more items\n"
+        summary += "\n"
     except Exception as e:
         summary += f"Session error: {e}\n"
 
     # long-term memory
     try:
         longterm_items = longterm_memory.get_all_verified()
-        print(f"DEBUG: All longterm items: {len(longterm_items)}")  # Debug
         user_longterm = [item for item in longterm_items if item.user_id == user_id]
-        print(f"DEBUG: User longterm items: {len(user_longterm)}")  # Debug
         summary += f"Long-term items: {len(user_longterm)}\n"
+        if user_longterm:
+            summary += "--- LONGTERM MEMORY CONTENT ---\n"
+            for i, item in enumerate(user_longterm[:5]):
+                summary += f"{i+1}. {item.content[:100]}{'...' if len(item.content) > 100 else ''}\n"
+            if len(user_longterm) > 5:
+                summary += f"... and {len(user_longterm) - 5} more items\n"
     except Exception as e:
         summary += f"Long-term error: {e}\n"
 

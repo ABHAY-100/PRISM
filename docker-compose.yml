@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  # ChromaDB
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: mini-project-chromadb
+    ports:
+      - "8001:8000"
+    environment:
+      - CHROMA_SERVER_HOST=0.0.0.0
+      - CHROMA_SERVER_HTTP_PORT=8000
+    volumes:
+      - chromadb_data:/chroma/chroma
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Server
+  server:
+    build: .
+    container_name: mini-project-server
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - AGENT_PRIVATE_KEY=${AGENT_PRIVATE_KEY}
+      - AGENT_PUBLIC_KEY=${AGENT_PUBLIC_KEY}
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+    depends_on:
+      - chromadb
+    networks:
+      - app-network
+    restart: unless-stopped
+    command: ["uv", "run", "python", "main.py"]
+
+  # Bot
+  bot:
+    build: .
+    container_name: mini-project-bot
+    environment:
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      - API_BASE_URL=http://server:8000
+    depends_on:
+      - server
+    networks:
+      - app-network
+    restart: unless-stopped
+    command: ["uv", "run", "python", "discord/bot.py"]
+
+volumes:
+  chromadb_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge

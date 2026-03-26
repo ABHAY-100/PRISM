@@ -11,12 +11,23 @@ import logging
 class LongTermMemory:
     def __init__(self, agent_public_key):
         self._agent_public_key = agent_public_key
-        db_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "chroma_data"
-        )
-        self._client = chromadb.PersistentClient(
-            path=db_path, settings=Settings(allow_reset=True)
-        )
+        
+        chroma_host = os.getenv("CHROMA_HOST")
+        chroma_port = os.getenv("CHROMA_PORT", "8000")
+        
+        if chroma_host:
+            self._client = chromadb.HttpClient(
+                host=chroma_host,
+                port=int(chroma_port)
+            )
+        else:
+            db_path = os.path.join(
+                os.path.dirname(os.path.dirname(__file__)), "chroma_data"
+            )
+            self._client = chromadb.PersistentClient(
+                path=db_path, settings=Settings(allow_reset=True)
+            )
+        
         self._collection = self._client.get_or_create_collection("longterm_memory")
         logging.debug("LongTermMemory initialized")
 

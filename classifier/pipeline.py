@@ -74,7 +74,7 @@ def run(
         confidence_threshold: Minimum Stage 2 top-score to skip Stage 5.
         allowed_sources:      Overrides the Stage 4 default source allowlist.
         min_trust_score:      Stage 4 minimum trust score (0–1).
-        llm_api_key:          OpenAI-compatible key (falls back to OPENAI_API_KEY env var).
+        llm_api_key:          OpenAI-compatible key (falls back to OPENROUTER_API_KEY env var).
         llm_base_url:         Chat completions base URL for Stage 5.
         llm_model:            Model name for Stage 5.
 

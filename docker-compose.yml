@@ -23,7 +23,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - AGENT_PRIVATE_KEY=${AGENT_PRIVATE_KEY}
       - AGENT_PUBLIC_KEY=${AGENT_PUBLIC_KEY}
       - CHROMA_HOST=chromadb

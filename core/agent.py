@@ -29,7 +29,7 @@ from memory.crypto import load_keypair, sign_item, sign_session_item
 llm = ChatOpenAI(
     model="gpt-4o-mini",
     base_url="https://openrouter.ai/api/v1",
-    api_key=os.getenv("OPENAI_API_KEY"),
+    api_key=os.getenv("OPENROUTER_API_KEY"),
     temperature=0,
 )
 

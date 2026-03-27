@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 VALID_TIERS = frozenset({"SCRATCH", "SESSION", "LONGTERM"})
 
-GEMINI_MODEL    = "gemini-2.5-flash"
+GEMINI_MODEL    = "gemini-1.5-flash"
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 
 _SYSTEM_PROMPT = (
@@ -86,13 +86,19 @@ def _call_gemini(
             if not parts:
                 raise ValueError("No parts in Gemini response content")
 
-            raw_text = parts[0].get("text", "").strip()
+            raw_text = "".join(p.get("text", "") for p in parts).strip()
+            
             start = raw_text.find("{")
             end   = raw_text.rfind("}") + 1
             if start == -1 or end == 0:
+                logger.error("Stage 5 | Invalid JSON from Gemini. Raw text: %r", raw_text)
                 raise ValueError(f"No JSON object in response: {raw_text!r}")
 
-            return json.loads(raw_text[start:end])
+            try:
+                return json.loads(raw_text[start:end])
+            except json.JSONDecodeError as e:
+                logger.error("Stage 5 | JSON decode error: %s. Raw text: %r", e, raw_text)
+                raise
 
         except Exception as exc:
             last_exc = exc

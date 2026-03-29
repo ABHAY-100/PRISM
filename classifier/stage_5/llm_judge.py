@@ -31,9 +31,11 @@ def _user_prompt(
     if len(content) > 1500:
         truncated_content += " ... [truncated]"
 
+    safe_metadata = {k: v for k, v in metadata.items() if k in {"source", "created_at", "session_id"}}
+
     return (
         f"Memory content: {truncated_content!r}\n"
-        f"Metadata: {json.dumps(metadata)}\n"
+        f"Metadata: {json.dumps(safe_metadata)}\n"
         f"Embedding classifier scores (below confidence threshold): {scores_str}\n\n"
         "Classify this memory into the most appropriate tier."
     )

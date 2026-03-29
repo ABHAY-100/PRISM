@@ -113,8 +113,12 @@ def _call_gemini(
         except Exception as exc:
             last_exc = exc
             
+            # Extract HTTP status code if this is a response error
             status = getattr(getattr(exc, "response", None), "status_code", None)
-            if status not in (429, 500, 502, 503, 504):
+            
+            # ONLY break early if we have a definitive HTTP status that isn't on the retry list.
+            # (If status is None, it's a parsing error or timeout — we SHOULD retry).
+            if status is not None and status not in (429, 500, 502, 503, 504):
                 break
 
     logger.error("Stage 5 | Gemini call failed after retries: %s", last_exc)

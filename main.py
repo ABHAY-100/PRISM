@@ -1,14 +1,18 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Optional
 import os
 import logging
 from dotenv import load_dotenv
+
+from logger import setup_websocket_logging, handle_websocket
 
 load_dotenv()
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+websocket_log_handler = setup_websocket_logging()
 
 
 from core.agent import process_discord_message
@@ -33,9 +37,9 @@ def main():
 
 
 @app.post("/chat", response_model=MessageResponse)
-async def chat(request: Dict[str, Any]):
-    user_id = request.get("user_id")
-    message_content = request.get("message_content")
+async def chat(request: MessageRequest):
+    user_id = request.user_id
+    message_content = request.message_content
     
     logger.info(f"Chat request from user_id={user_id}, content_length={len(message_content) if message_content else 0}")
     
@@ -53,6 +57,11 @@ async def chat(request: Dict[str, Any]):
         raise HTTPException(
             status_code=500, detail=f"Error processing message: {str(e)}"
         )
+
+
+@app.websocket("/ws/logs")
+async def websocket_logs(websocket: WebSocket):
+    await handle_websocket(websocket)
 
 
 if __name__ == "__main__":

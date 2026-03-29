@@ -48,7 +48,11 @@ def _call_gemini(
         logger.error("Stage 5 | httpx is not installed; run: uv add httpx")
         return None
 
-    url = f"{base_url.rstrip('/')}/{model}:generateContent?key={api_key}"
+    url = f"{base_url.rstrip('/')}/{model}:generateContent"
+    headers = {
+        "x-goog-api-key": api_key,
+        "Content-Type": "application/json",
+    }
 
     body = {
         "system_instruction": {
@@ -73,7 +77,7 @@ def _call_gemini(
             time.sleep(wait)
         try:
             with httpx.Client(timeout=40.0) as client:
-                resp = client.post(url, json=body)
+                resp = client.post(url, json=body, headers=headers)
                 resp.raise_for_status()
 
             data      = resp.json()

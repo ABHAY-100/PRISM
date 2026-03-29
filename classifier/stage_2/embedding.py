@@ -73,7 +73,11 @@ def _embed(text: str) -> list[float]:
     except ImportError as exc:
         raise RuntimeError("httpx is not installed") from exc
 
-    url = f"{EMBED_BASE_URL}/{EMBED_MODEL}:embedContent?key={api_key}"
+    url = f"{EMBED_BASE_URL}/{EMBED_MODEL}:embedContent"
+    headers = {
+        "x-goog-api-key": api_key,
+        "Content-Type": "application/json",
+    }
     body = {
         "model": f"models/{EMBED_MODEL}",
         "content": {"parts": [{"text": text}]},
@@ -83,7 +87,7 @@ def _embed(text: str) -> list[float]:
     for attempt in range(EMBED_RETRIES):
         try:
             with httpx.Client(timeout=30.0) as client:
-                resp = client.post(url, json=body)
+                resp = client.post(url, json=body, headers=headers)
                 resp.raise_for_status()
             data = resp.json()
             values = data["embedding"]["values"]

@@ -27,8 +27,12 @@ def _user_prompt(
     stage2_scores: Dict[str, float],
 ) -> str:
     scores_str = ", ".join(f"{k}: {v:.3f}" for k, v in stage2_scores.items())
+    truncated_content = content[:1500]
+    if len(content) > 1500:
+        truncated_content += " ... [truncated]"
+
     return (
-        f"Memory content: {content!r}\n"
+        f"Memory content: {truncated_content!r}\n"
         f"Metadata: {json.dumps(metadata)}\n"
         f"Embedding classifier scores (below confidence threshold): {scores_str}\n\n"
         "Classify this memory into the most appropriate tier."

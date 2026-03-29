@@ -1,6 +1,6 @@
 import discord
 import os
-import requests
+import httpx
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -31,7 +31,7 @@ class MyBot(discord.Client):
         
         if content.startswith("!"):
             command = content[1:].split()[0].lower()
-            if command in ["memory", "help"]:
+            if command == "help":
                 await self.on_command(message, command)
                 return
             else:
@@ -58,21 +58,21 @@ class MyBot(discord.Client):
 
         async with message.channel.typing():
             try:
-                response = requests.post(
-                    f"{self.api_base_url}/chat",
-                    json={
-                        "user_id": user_id,
-                        "message_content": content,
-                        "conversation_id": conversation_id,
-                    },
-                    timeout=120,
-                )
+                async with httpx.AsyncClient(timeout=120.0) as client:
+                    response = await client.post(
+                        f"{self.api_base_url}/chat",
+                        json={
+                            "user_id": user_id,
+                            "message_content": content,
+                            "conversation_id": conversation_id,
+                        },
+                    )
 
                 if response.status_code == 200:
                     data = response.json()
                     bot_response = data.get(
                         "response",
-                        "Hmm… I didn’t get that. Mind saying it another way?",
+                        "Hmm… I didn't get that. Mind saying it another way?",
                     )
 
                     if len(bot_response) > 2000:
@@ -88,9 +88,9 @@ class MyBot(discord.Client):
                     error_msg = f"Sorry, I encountered an error (Status: {response.status_code})"
                     await message.reply(error_msg)
 
-            except requests.exceptions.Timeout:
+            except httpx.TimeoutException:
                 await message.reply("Sorry, request timed out. Please try again.")
-            except requests.exceptions.ConnectionError:
+            except httpx.ConnectError:
                 await message.reply(
                     "Sorry, I can't connect to my brain right now. Please try again later."
                 )
@@ -99,47 +99,10 @@ class MyBot(discord.Client):
                 await message.reply("Sorry, something went wrong. Please try again.")
 
     async def on_command(self, message, command):
-        user_id = str(message.author.id)
-
-        if command == "memory":
-            try:
-                response = requests.get(
-                    f"{self.api_base_url}/memory/{user_id}", 
-                    timeout=60,
-                    headers={'Connection': 'keep-alive'}
-                )
-                if response.status_code == 200:
-                    data = response.json()
-                    summary = data.get("summary", "No memory data available.")
-                    memory_response = f"**Memory Summary:**\n{summary}"
-
-                    if len(memory_response) > 2000:
-                        chunks = [
-                            memory_response[i : i + 2000]
-                            for i in range(0, len(memory_response), 2000)
-                        ]
-                        for chunk in chunks:
-                            await message.reply(chunk)
-                    else:
-                        await message.reply(memory_response)
-                else:
-                    print(f"API Error: {response.status_code} - {response.text}")  
-                    await message.reply("Couldn't retrieve memory summary.")
-            except requests.exceptions.ConnectionError as e:
-                print(f"Connection error: {e}")  
-                await message.reply("Can't connect to memory server.")
-            except requests.exceptions.Timeout as e:
-                print(f"Timeout error: {e}")  
-                await message.reply("Memory request timed out.")
-            except Exception as e:
-                print(f"Exception in memory command: {type(e).__name__}: {e}")  
-                await message.reply("Error getting memory summary.")
-
-        elif command == "help":
+        if command == "help":
             help_text = """
             **Bot Commands:**
             • `!help` - Show this help message
-            • `!memory` - Show your memory summary
             • Just message me or mention me to chat!
             """
             await message.reply(help_text)

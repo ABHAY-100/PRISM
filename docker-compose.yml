@@ -4,7 +4,7 @@ services:
   # ChromaDB
   chromadb:
     image: chromadb/chroma:latest
-    container_name: mini-project-chromadb
+    container_name: prism-chromadb
     ports:
       - "8001:8000"
     environment:
@@ -19,7 +19,7 @@ services:
   # Server
   server:
     build: .
-    container_name: mini-project-server
+    container_name: prism-server
     ports:
       - "8000:8000"
     environment:
@@ -38,7 +38,7 @@ services:
   # Bot
   bot:
     build: .
-    container_name: mini-project-bot
+    container_name: prism-bot
     environment:
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
       - API_BASE_URL=http://server:8000

@@ -332,38 +332,3 @@ def process_discord_message(user_id: str, message_content: str) -> str:
     finally:
         scratch_memory.clear()
         session_memory.purge_expired()
-
-
-def get_user_memory_summary(user_id: str) -> str:
-    summary = f"Memory summary for user {user_id}:\n"
-
-    # session memory
-    try:
-        session_items = session_memory.get_active()
-        user_session = [item for item in session_items if item.user_id == user_id]
-        summary += f"Session items: {len(user_session)}\n"
-        if user_session:
-            summary += "--- SESSION MEMORY CONTENT ---\n"
-            for i, item in enumerate(user_session[:5]):
-                summary += f"{i+1}. {item.content[:100]}{'...' if len(item.content) > 100 else ''}\n"
-            if len(user_session) > 5:
-                summary += f"... and {len(user_session) - 5} more items\n"
-        summary += "\n"
-    except Exception as e:
-        summary += f"Session error: {e}\n"
-
-    # long-term memory
-    try:
-        longterm_items = longterm_memory.get_all_verified()
-        user_longterm = [item for item in longterm_items if item.user_id == user_id]
-        summary += f"Long-term items: {len(user_longterm)}\n"
-        if user_longterm:
-            summary += "--- LONGTERM MEMORY CONTENT ---\n"
-            for i, item in enumerate(user_longterm[:5]):
-                summary += f"{i+1}. {item.content[:100]}{'...' if len(item.content) > 100 else ''}\n"
-            if len(user_longterm) > 5:
-                summary += f"... and {len(user_longterm) - 5} more items\n"
-    except Exception as e:
-        summary += f"Long-term error: {e}\n"
-
-    return summary

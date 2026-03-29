@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-from core.agent import process_discord_message, get_user_memory_summary
+from core.agent import process_discord_message
 
 app = FastAPI()
 
@@ -25,10 +25,6 @@ class MessageRequest(BaseModel):
 
 class MessageResponse(BaseModel):
     response: str
-
-
-class MemorySummaryResponse(BaseModel):
-    summary: str
 
 
 @app.get("/")
@@ -52,17 +48,6 @@ async def chat(request: Dict[str, Any]):
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error processing message: {str(e)}"
-        )
-
-
-@app.get("/memory/{user_id}", response_model=MemorySummaryResponse)
-async def get_memory_summary(user_id: str):
-    try:
-        summary = get_user_memory_summary(user_id)
-        return MemorySummaryResponse(summary=summary).__dict__
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error getting memory summary: {str(e)}"
         )
 
 

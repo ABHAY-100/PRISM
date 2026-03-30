@@ -5,8 +5,6 @@ services:
   chromadb:
     image: chromadb/chroma:latest
     container_name: prism-chromadb
-    ports:
-      - "8001:8000"
     environment:
       - CHROMA_SERVER_HOST=0.0.0.0
       - CHROMA_SERVER_HTTP_PORT=8000
@@ -48,6 +46,20 @@ services:
       - app-network
     restart: unless-stopped
     command: ["uv", "run", "python", "discord/bot.py"]
+
+  # Web Client
+  web:
+    build: ./web
+    container_name: prism-web
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_BASE_URL=http://server:8000
+    depends_on:
+      - server
+    networks:
+      - app-network
+    restart: unless-stopped
 
 volumes:
   chromadb_data:

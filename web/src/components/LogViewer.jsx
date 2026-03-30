@@ -9,7 +9,8 @@ export function LogViewer() {
   const logsEndRef = useRef(null);
 
   useEffect(() => {
-    const sseUrl = `http://${window.location.hostname}:8000/logs/stream`;
+    const apiBase = import.meta.env.VITE_API_BASE_URL || `http://localhost:8000`;
+    const sseUrl = `${apiBase}/logs/stream`;
     const es = new EventSource(sseUrl);
 
     es.onopen = () => setIsConnected(true);

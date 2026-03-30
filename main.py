@@ -1,11 +1,13 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional
 import os
+import asyncio
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 
-from logger import logger
+from logger import logger, subscribe_to_logs, unsubscribe_from_logs
 
 load_dotenv()
 
@@ -30,6 +32,31 @@ class MessageRequest(BaseModel):
 
 class MessageResponse(BaseModel):
     response: str
+
+
+@app.get("/logs/stream")
+async def stream_logs():
+    queue = asyncio.Queue()
+    subscribe_to_logs(queue)
+
+    async def event_generator():
+        try:
+            while True:
+                msg = await queue.get()
+                yield f"data: {msg}\n\n"
+        except asyncio.CancelledError:
+            pass
+        finally:
+            unsubscribe_from_logs(queue)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
+    )
 
 
 @app.get("/")

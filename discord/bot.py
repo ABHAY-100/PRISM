@@ -1,12 +1,13 @@
 import discord
 import os
+import sys
 import httpx
-import logging
 from dotenv import load_dotenv
 
 load_dotenv()
 
-logger = logging.getLogger(__name__)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from logger import logger
 
 
 class MyBot(discord.Client):

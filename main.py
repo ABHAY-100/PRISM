@@ -4,6 +4,7 @@ from typing import Optional
 import os
 import logging
 from dotenv import load_dotenv
+from fastapi.middleware.cors import CORSMiddleware
 
 from logger import setup_websocket_logging, handle_websocket
 
@@ -18,6 +19,14 @@ websocket_log_handler = setup_websocket_logging()
 from core.agent import process_discord_message
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class MessageRequest(BaseModel):
@@ -40,16 +49,20 @@ def main():
 async def chat(request: MessageRequest):
     user_id = request.user_id
     message_content = request.message_content
-    
-    logger.info(f"Chat request from user_id={user_id}, content_length={len(message_content) if message_content else 0}")
-    
+
+    logger.info(
+        f"Chat request from user_id={user_id}, content_length={len(message_content) if message_content else 0}"
+    )
+
     try:
         response = process_discord_message(
             user_id=user_id,
             message_content=message_content,
         )
-        
-        logger.info(f"Chat response generated for user_id={user_id}, response_length={len(response)}")
+
+        logger.info(
+            f"Chat response generated for user_id={user_id}, response_length={len(response)}"
+        )
         return MessageResponse(response=response)
 
     except Exception as e:

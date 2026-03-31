@@ -129,3 +129,6 @@ chroma_data/
 .env.development
 .env.test
 .env.production
+
+# Node.js
+node_modules/

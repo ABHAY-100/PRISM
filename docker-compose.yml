@@ -22,6 +22,7 @@ services:
       - "8000:8000"
     environment:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
       - AGENT_PRIVATE_KEY=${AGENT_PRIVATE_KEY}
       - AGENT_PUBLIC_KEY=${AGENT_PUBLIC_KEY}
       - CHROMA_HOST=chromadb

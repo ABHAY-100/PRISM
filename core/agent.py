@@ -30,7 +30,7 @@ from memory.crypto import load_keypair, sign_item, sign_session_item
 
 
 llm = ChatOpenAI(
-    model="gpt-4o-mini",
+    model="openai/gpt-oss-120b",
     base_url="https://openrouter.ai/api/v1",
     api_key=os.getenv("OPENROUTER_API_KEY"),
     temperature=0,
@@ -155,14 +155,14 @@ def retrieve_memory_node(state: AgentState) -> dict:
         if relevant_scratch:
             logger.debug(f"Found {len(relevant_scratch)} relevant scratch items")
             context_pieces.append(
-                "--- SCRATCH MEMORY ---\n" + "\n".join(relevant_scratch[:3])
+                "--- SCRATCH MEMORY ---\n" + "\n".join(relevant_scratch[:10])
             )
     except Exception as e:
         logger.error(f"Error searching scratch memory: {e}", exc_info=True)
 
     # session memory
     try:
-        session_items = session_memory.search(latest_message, n_results=3)
+        session_items = session_memory.search(latest_message, n_results=10)
         user_session = [item for item in session_items if item.user_id == user_id]
         if user_session:
             logger.debug(f"Found {len(user_session)} relevant session items")
@@ -176,7 +176,7 @@ def retrieve_memory_node(state: AgentState) -> dict:
     # long-term memory
     if longterm_memory:
         try:
-            longterm_items = longterm_memory.search(latest_message, n_results=3)
+            longterm_items = longterm_memory.search(latest_message, n_results=10)
             user_longterm = [item for item in longterm_items if item.user_id == user_id]
             if user_longterm:
                 logger.debug(f"Found {len(user_longterm)} relevant long-term items")

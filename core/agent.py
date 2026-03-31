@@ -51,7 +51,7 @@ class AgentState(TypedDict):
 @tool
 def web_search(query: str) -> str:
     """
-    Search the web for current cybersecurity threats, vulnerabilities, research papers, 
+    Search the web for current cybersecurity threats, vulnerabilities, research papers,
     or technical documentation. Use this tool when you need up-to-date threat intelligence,
     security advisories, or to research specific cybersecurity topics, attack techniques,
     or mitigation strategies. Returns relevant search results with URLs and technical snippets.
@@ -66,10 +66,10 @@ def web_search(query: str) -> str:
 @tool
 def web_scraper(url: str) -> str:
     """
-    Extract technical content from cybersecurity websites, security blogs, vulnerability 
-    reports, or research papers. Use this tool when you have a specific URL containing 
-    security advisories, technical documentation, malware analysis reports, or threat 
-    intelligence that needs detailed analysis. Returns the full technical content for 
+    Extract technical content from cybersecurity websites, security blogs, vulnerability
+    reports, or research papers. Use this tool when you have a specific URL containing
+    security advisories, technical documentation, malware analysis reports, or threat
+    intelligence that needs detailed analysis. Returns the full technical content for
     security research and analysis.
     """
     try:
@@ -91,10 +91,10 @@ def web_scraper(url: str) -> str:
 @tool
 def document_parser(file_path: str) -> str:
     """
-    Parse and extract content from security reports, technical documentation, or 
-    research papers in PDF format. Use this tool when you need to analyze security 
-    advisories, vulnerability reports, malware analysis documents, or cybersecurity 
-    research papers. Returns the full technical content extracted from the PDF for 
+    Parse and extract content from security reports, technical documentation, or
+    research papers in PDF format. Use this tool when you need to analyze security
+    advisories, vulnerability reports, malware analysis documents, or cybersecurity
+    research papers. Returns the full technical content extracted from the PDF for
     detailed security analysis.
     """
     if not os.path.exists(file_path):
@@ -137,7 +137,9 @@ def retrieve_memory_node(state: AgentState) -> dict:
     """Pull context from all memory tiers."""
     latest_message = state["messages"][-1].content
     user_id = state["user_id"]
-    logger.debug(f"Retrieving memory for user_id={user_id}, query={latest_message[:50]}...")
+    logger.debug(
+        f"Retrieving memory for user_id={user_id}, query={latest_message[:50]}..."
+    )
 
     context_pieces = []
 
@@ -245,65 +247,20 @@ def execute_tools_node(state: AgentState) -> dict:
     return {"messages": tool_outputs}
 
 
-# def store_to_memory_node(state: AgentState) -> dict:
-#     """Store tool outputs and conversation to appropriate memory tiers using router."""
-#     user_id = state["user_id"]
-#     logger.debug(f"Storing to memory for user_id={user_id}")
-#     for message in reversed(state["messages"]):
-#         if isinstance(message, ToolMessage):
-#             memory_item = MemoryItem(
-#                 content=message.content,
-#                 tier="SCRATCH",  # dummy tier
-#                 user_id=state["user_id"],
-#             )
-
-#             # dummy router
-#             classifier(memory_item)
-#             logger.debug(f"Memory item classified as tier={memory_item.tier}")
-
-#             if memory_item.tier == "SESSION":
-#                 from datetime import timedelta
-
-#                 # 168 hours = 1 week
-#                 memory_item.expires_at = datetime.utcnow() + timedelta(hours=168)
-
-#             # sign if keys
-#             if private_key:
-#                 if memory_item.tier == "LONGTERM":
-#                     sign_item(memory_item, private_key)
-#                 elif memory_item.tier == "SESSION":
-#                     sign_session_item(memory_item)
-
-#             # store based on tier
-#             try:
-#                 if memory_item.tier == "LONGTERM" and longterm_memory:
-#                     longterm_memory.add(memory_item)
-#                     logger.info(f"Stored to long-term memory: {memory_item.id[:8]}...")
-#                 elif memory_item.tier == "SESSION":
-#                     session_memory.add(memory_item)
-#                     logger.info(f"Stored to session memory: {memory_item.id[:8]}...")
-#                 elif memory_item.tier == "SCRATCH":
-#                     scratch_memory.add(memory_item)
-#                     logger.info(f"Stored to scratch memory: {memory_item.id[:8]}...")
-#             except Exception as e:
-#                 logger.error(f"Failed to store to {memory_item.tier.lower()} memory: {e}")
-
-#             break
-
-#     return {}
 def store_to_memory_node(state: AgentState) -> dict:
     """Store tool outputs OR final AI answers to memory tiers."""
     user_id = state["user_id"]
     last_message = state["messages"][-1]
-    
-    # Check if the last message is a Tool result OR a final AI response
+
     is_tool = isinstance(last_message, ToolMessage)
-    is_final_ai = isinstance(last_message, AIMessage) and not getattr(last_message, "tool_calls", None)
+    is_final_ai = isinstance(last_message, AIMessage) and not getattr(
+        last_message, "tool_calls", None
+    )
 
     if is_tool or is_final_ai:
         memory_item = MemoryItem(
             content=last_message.content,
-            tier="SCRATCH", 
+            tier="SCRATCH",
             user_id=user_id,
         )
 
@@ -311,6 +268,7 @@ def store_to_memory_node(state: AgentState) -> dict:
 
         if memory_item.tier == "SESSION":
             from datetime import timedelta
+
             memory_item.expires_at = datetime.utcnow() + timedelta(hours=168)
 
         if private_key:
@@ -332,12 +290,6 @@ def store_to_memory_node(state: AgentState) -> dict:
     return {}
 
 
-# def should_continue(state: AgentState) -> str:
-#     """Route to tool execution if the LLM issued tool calls; otherwise end."""
-#     last_message = state["messages"][-1]
-#     if getattr(last_message, "tool_calls", None):
-#         return "Execute_Tools_Node"
-#     return END
 def should_continue(state: AgentState) -> str:
     """Route to tool execution OR go to storage before ending."""
     last_message = state["messages"][-1]
@@ -346,6 +298,7 @@ def should_continue(state: AgentState) -> str:
         return "Execute_Tools_Node"
     # Even if no tools, go to Memory Node to save the final answer
     return "Store_To_Memory_Node"
+
 
 def after_storage_route(state: AgentState) -> str:
     """Decide if we need to go back to LLM or finish."""
@@ -357,30 +310,6 @@ def after_storage_route(state: AgentState) -> str:
     return END
 
 
-# build graph
-# workflow = StateGraph(AgentState)
-
-# workflow.add_node("Retrieve_Memory_Node", retrieve_memory_node)
-# workflow.add_node("Orchestrator_Node", orchestrator_node)
-# workflow.add_node("Execute_Tools_Node", execute_tools_node)
-# workflow.add_node("Store_To_Memory_Node", store_to_memory_node)
-
-# workflow.set_entry_point("Retrieve_Memory_Node")
-
-# workflow.add_edge("Retrieve_Memory_Node", "Orchestrator_Node")
-
-# workflow.add_conditional_edges(
-#     "Orchestrator_Node",
-#     should_continue,
-#     {
-#         "Execute_Tools_Node": "Execute_Tools_Node",
-#         END: END,
-#     },
-# )
-
-# workflow.add_edge("Execute_Tools_Node", "Store_To_Memory_Node")
-# workflow.add_edge("Store_To_Memory_Node", "Orchestrator_Node")
-# build graph
 workflow = StateGraph(AgentState)
 
 workflow.add_node("Retrieve_Memory_Node", retrieve_memory_node)
@@ -418,7 +347,9 @@ research_agent = workflow.compile()
 
 
 def process_discord_message(user_id: str, message_content: str) -> str:
-    logger.info(f"Processing Discord message for user_id={user_id}, length={len(message_content)}")
+    logger.info(
+        f"Processing Discord message for user_id={user_id}, length={len(message_content)}"
+    )
     human_message = HumanMessage(content=message_content)
 
     initial_state: AgentState = {

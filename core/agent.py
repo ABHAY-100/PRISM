@@ -245,62 +245,141 @@ def execute_tools_node(state: AgentState) -> dict:
     return {"messages": tool_outputs}
 
 
+# def store_to_memory_node(state: AgentState) -> dict:
+#     """Store tool outputs and conversation to appropriate memory tiers using router."""
+#     user_id = state["user_id"]
+#     logger.debug(f"Storing to memory for user_id={user_id}")
+#     for message in reversed(state["messages"]):
+#         if isinstance(message, ToolMessage):
+#             memory_item = MemoryItem(
+#                 content=message.content,
+#                 tier="SCRATCH",  # dummy tier
+#                 user_id=state["user_id"],
+#             )
+
+#             # dummy router
+#             classifier(memory_item)
+#             logger.debug(f"Memory item classified as tier={memory_item.tier}")
+
+#             if memory_item.tier == "SESSION":
+#                 from datetime import timedelta
+
+#                 # 168 hours = 1 week
+#                 memory_item.expires_at = datetime.utcnow() + timedelta(hours=168)
+
+#             # sign if keys
+#             if private_key:
+#                 if memory_item.tier == "LONGTERM":
+#                     sign_item(memory_item, private_key)
+#                 elif memory_item.tier == "SESSION":
+#                     sign_session_item(memory_item)
+
+#             # store based on tier
+#             try:
+#                 if memory_item.tier == "LONGTERM" and longterm_memory:
+#                     longterm_memory.add(memory_item)
+#                     logger.info(f"Stored to long-term memory: {memory_item.id[:8]}...")
+#                 elif memory_item.tier == "SESSION":
+#                     session_memory.add(memory_item)
+#                     logger.info(f"Stored to session memory: {memory_item.id[:8]}...")
+#                 elif memory_item.tier == "SCRATCH":
+#                     scratch_memory.add(memory_item)
+#                     logger.info(f"Stored to scratch memory: {memory_item.id[:8]}...")
+#             except Exception as e:
+#                 logger.error(f"Failed to store to {memory_item.tier.lower()} memory: {e}")
+
+#             break
+
+#     return {}
 def store_to_memory_node(state: AgentState) -> dict:
-    """Store tool outputs and conversation to appropriate memory tiers using router."""
+    """Store tool outputs OR final AI answers to memory tiers."""
     user_id = state["user_id"]
-    logger.debug(f"Storing to memory for user_id={user_id}")
-    for message in reversed(state["messages"]):
-        if isinstance(message, ToolMessage):
-            memory_item = MemoryItem(
-                content=message.content,
-                tier="SCRATCH",  # dummy tier
-                user_id=state["user_id"],
-            )
+    last_message = state["messages"][-1]
+    
+    # Check if the last message is a Tool result OR a final AI response
+    is_tool = isinstance(last_message, ToolMessage)
+    is_final_ai = isinstance(last_message, AIMessage) and not getattr(last_message, "tool_calls", None)
 
-            # dummy router
-            classifier(memory_item)
-            logger.debug(f"Memory item classified as tier={memory_item.tier}")
+    if is_tool or is_final_ai:
+        memory_item = MemoryItem(
+            content=last_message.content,
+            tier="SCRATCH", 
+            user_id=user_id,
+        )
 
-            if memory_item.tier == "SESSION":
-                from datetime import timedelta
+        classifier(memory_item)
 
-                # 168 hours = 1 week
-                memory_item.expires_at = datetime.utcnow() + timedelta(hours=168)
+        if memory_item.tier == "SESSION":
+            from datetime import timedelta
+            memory_item.expires_at = datetime.utcnow() + timedelta(hours=168)
 
-            # sign if keys
-            if private_key:
-                if memory_item.tier == "LONGTERM":
-                    sign_item(memory_item, private_key)
-                elif memory_item.tier == "SESSION":
-                    sign_session_item(memory_item)
+        if private_key:
+            if memory_item.tier == "LONGTERM":
+                sign_item(memory_item, private_key)
+            elif memory_item.tier == "SESSION":
+                sign_session_item(memory_item)
 
-            # store based on tier
-            try:
-                if memory_item.tier == "LONGTERM" and longterm_memory:
-                    longterm_memory.add(memory_item)
-                    logger.info(f"Stored to long-term memory: {memory_item.id[:8]}...")
-                elif memory_item.tier == "SESSION":
-                    session_memory.add(memory_item)
-                    logger.info(f"Stored to session memory: {memory_item.id[:8]}...")
-                elif memory_item.tier == "SCRATCH":
-                    scratch_memory.add(memory_item)
-                    logger.info(f"Stored to scratch memory: {memory_item.id[:8]}...")
-            except Exception as e:
-                logger.error(f"Failed to store to {memory_item.tier.lower()} memory: {e}")
-
-            break
+        try:
+            if memory_item.tier == "LONGTERM" and longterm_memory:
+                longterm_memory.add(memory_item)
+            elif memory_item.tier == "SESSION":
+                session_memory.add(memory_item)
+            elif memory_item.tier == "SCRATCH":
+                scratch_memory.add(memory_item)
+        except Exception as e:
+            logger.error(f"Failed to store memory: {e}")
 
     return {}
 
 
+# def should_continue(state: AgentState) -> str:
+#     """Route to tool execution if the LLM issued tool calls; otherwise end."""
+#     last_message = state["messages"][-1]
+#     if getattr(last_message, "tool_calls", None):
+#         return "Execute_Tools_Node"
+#     return END
 def should_continue(state: AgentState) -> str:
-    """Route to tool execution if the LLM issued tool calls; otherwise end."""
+    """Route to tool execution OR go to storage before ending."""
     last_message = state["messages"][-1]
+    # If the LLM wants tools, go to tools
     if getattr(last_message, "tool_calls", None):
         return "Execute_Tools_Node"
+    # Even if no tools, go to Memory Node to save the final answer
+    return "Store_To_Memory_Node"
+
+def after_storage_route(state: AgentState) -> str:
+    """Decide if we need to go back to LLM or finish."""
+    last_message = state["messages"][-1]
+    # If the last thing in state is a Tool result, we need the LLM to see it
+    if isinstance(last_message, ToolMessage):
+        return "Orchestrator_Node"
+    # Otherwise (it was a final AI answer), we stop
     return END
 
 
+# build graph
+# workflow = StateGraph(AgentState)
+
+# workflow.add_node("Retrieve_Memory_Node", retrieve_memory_node)
+# workflow.add_node("Orchestrator_Node", orchestrator_node)
+# workflow.add_node("Execute_Tools_Node", execute_tools_node)
+# workflow.add_node("Store_To_Memory_Node", store_to_memory_node)
+
+# workflow.set_entry_point("Retrieve_Memory_Node")
+
+# workflow.add_edge("Retrieve_Memory_Node", "Orchestrator_Node")
+
+# workflow.add_conditional_edges(
+#     "Orchestrator_Node",
+#     should_continue,
+#     {
+#         "Execute_Tools_Node": "Execute_Tools_Node",
+#         END: END,
+#     },
+# )
+
+# workflow.add_edge("Execute_Tools_Node", "Store_To_Memory_Node")
+# workflow.add_edge("Store_To_Memory_Node", "Orchestrator_Node")
 # build graph
 workflow = StateGraph(AgentState)
 
@@ -310,20 +389,30 @@ workflow.add_node("Execute_Tools_Node", execute_tools_node)
 workflow.add_node("Store_To_Memory_Node", store_to_memory_node)
 
 workflow.set_entry_point("Retrieve_Memory_Node")
-
 workflow.add_edge("Retrieve_Memory_Node", "Orchestrator_Node")
 
+# Orchestrator now ALWAYS goes to either Tools or Memory (never straight to END)
 workflow.add_conditional_edges(
     "Orchestrator_Node",
     should_continue,
     {
         "Execute_Tools_Node": "Execute_Tools_Node",
-        END: END,
+        "Store_To_Memory_Node": "Store_To_Memory_Node",
     },
 )
 
+# Tools always go to Memory
 workflow.add_edge("Execute_Tools_Node", "Store_To_Memory_Node")
-workflow.add_edge("Store_To_Memory_Node", "Orchestrator_Node")
+
+# Memory decides: go back for a final answer, or END
+workflow.add_conditional_edges(
+    "Store_To_Memory_Node",
+    after_storage_route,
+    {
+        "Orchestrator_Node": "Orchestrator_Node",
+        END: END,
+    },
+)
 
 research_agent = workflow.compile()
 
